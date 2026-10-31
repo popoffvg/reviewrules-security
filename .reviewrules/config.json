@@ -1,5 +1,5 @@
 {
-  "instructions": "This rule set checks common security mistakes. Check only the lines that the diff adds or changes, and the code in this repo that those lines call or that calls them. Give FAIL only when you can quote a changed line and name the input or the setting that makes it unsafe. When the value is a constant, comes from trusted config, or is a fake value in a test, give PASS. Do not report style, hardening that no changed line touches, or old code that the diff does not change.",
+  "instructions": "This rule set checks common security mistakes. Check only the lines that the diff adds or changes, and the code in this repo that those lines call or that calls them. Give FAIL only when you can quote a changed line and name the input or the setting that makes it unsafe. When the value is a constant, comes from trusted config, or is a fake value in a test, give PASS. Do not report style, hardening that no changed line touches, or old code that the diff does not change. Each rule checks only the file kinds that it names: a GitHub workflow file belongs only to workflow-injection, and a manifest or lockfile only to dependency-source.",
   "rules": [
     {
       "id": "secrets",
