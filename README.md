@@ -45,6 +45,8 @@ Cost is the number of forks that a diff starts: one fork for each rule whose sco
 | docs or other text only | `secrets` | 1 |
 | one workflow file | `secrets`, `workflow-injection` | 2 |
 
+A run on the fixture below (10 rule forks, `correctness = false`, `agent = "codex"`, model `gpt-6-luna`) costs about $0.08.
+
 To run fewer forks, set `correctness = false` in the repo settings, or keep a repo-local copy of the set with fewer rules.
 
 ## Fixture
