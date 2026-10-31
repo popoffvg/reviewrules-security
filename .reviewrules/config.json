@@ -1,0 +1,65 @@
+{
+  "instructions": "This rule set checks common security mistakes. Check only the lines that the diff adds or changes, and the code in this repo that those lines call or that calls them. Give FAIL only when you can quote a changed line and name the input or the setting that makes it unsafe. When the value is a constant, comes from trusted config, or is a fake value in a test, give PASS. Do not report style, hardening that no changed line touches, or old code that the diff does not change.",
+  "rules": [
+    {
+      "id": "secrets",
+      "rule": "Flag a credential written as a literal in a changed line. This includes a password, an API key, a token, a private key, a connection string with a password, or a signing secret, set in a variable, a config key, a header, or a URL. Do not flag a value read from the environment, a secret store, or a file path, an empty string, an obvious placeholder (changeme, xxx, <token>, example, dummy, test), or a public key. Evidence: quote the line with the middle of the value masked, and name the kind of credential.",
+      "scope": ["**/*"],
+      "severity": "high"
+    },
+    {
+      "id": "injection",
+      "rule": "Flag untrusted data that reaches an interpreter without a safe API. Untrusted data is a request field, a header, a CLI argument, a file or message body, or a parameter that a caller fills from one of these. Sinks to check are a SQL or NoSQL query built by concatenation, format, or template (bound parameters are the fix), a shell command string (sh -c, shell=True, os.system, child_process.exec, Runtime.exec of one string, backticks, system, popen), eval, exec, new Function, user input used as template source, deserialization of untrusted bytes (pickle, yaml.load without SafeLoader, ObjectInputStream, unserialize, Marshal.load, BinaryFormatter), and XML parsing with external entities on. In shell scripts, flag eval of a variable and an unquoted input variable in a command. Do not flag a query with placeholders, a constant or allowlisted identifier joined into SQL, a command run as an argument list with no shell, or yaml.safe_load. Evidence: quote the sink line and the line where the untrusted value enters.",
+      "scope": ["**/*.{go,py,js,jsx,mjs,cjs,ts,tsx,java,kt,rb,php,c,h,cc,cpp,cxx,hpp,rs,cs,sh,bash}"],
+      "severity": "high"
+    },
+    {
+      "id": "file-and-url",
+      "rule": "Flag untrusted input that selects a file path or an outbound URL. Path traversal is a request value joined into a path that is opened, read, written, deleted, sent, or used for archive extraction, with no check that the cleaned path stays under the base directory. SSRF is a request value used as the full URL or the host of a server-side HTTP call, a webhook target, or a fetcher, with no host allowlist. Open redirect is a request value passed to a redirect with no allowlist or same-site check. Do not flag a constant path, a filepath.Base or allowlist lookup on the input, a fixed host with an escaped path segment, or a value from config. Evidence: quote the line where the input enters and the file or network call.",
+      "scope": ["**/*.{go,py,js,jsx,mjs,cjs,ts,tsx,java,kt,rb,php,c,h,cc,cpp,cxx,hpp,rs,cs}"],
+      "severity": "high"
+    },
+    {
+      "id": "access-control",
+      "rule": "Flag a changed endpoint or handler that skips the auth or ownership check that its sibling handlers use. Check for a new route without the auth middleware, decorator, or guard that other routes in the same file or router use, a lookup, update, or delete by an id from the request with no filter on the current user or tenant, a role or permission check that the diff removes or inverts, and token code that skips signature, expiry, or audience checks (alg none, verify=False, ParseUnverified). Do not flag a route that is public by design (health, login, static files, public docs) or a handler where an outer router or group applies the check. Evidence: quote the route or query line and name the check that the sibling handlers have.",
+      "scope": ["**/*.{go,py,js,jsx,mjs,cjs,ts,tsx,java,kt,rb,php,rs,cs}"],
+      "severity": "high"
+    },
+    {
+      "id": "memory-safety",
+      "rule": "Flag a memory-safety bug in changed C, C++, or Rust code. Check for strcpy, strcat, sprintf, gets, or scanf %s into a fixed buffer, memcpy or an array index with a length from input and no bound check against the destination size, a printf-family call whose format is not a literal, use after free or double free on the changed paths, an integer overflow in a size given to malloc, and a new Rust unsafe block that dereferences a raw pointer or calls from_raw_parts with an unchecked length. Do not flag a bounded call (snprintf, strncpy with sizeof dest and a terminator) or a copy whose length is checked first. Evidence: quote the call and the buffer declaration or the source of the length.",
+      "scope": ["**/*.{c,h,cc,cpp,cxx,hpp,hh,rs}"],
+      "severity": "high"
+    },
+    {
+      "id": "crypto-tls",
+      "rule": "Flag weak cryptography or a disabled TLS check in changed code. Check for TLS certificate or host verification turned off (InsecureSkipVerify true, verify=False, rejectUnauthorized false, NODE_TLS_REJECT_UNAUTHORIZED=0, a TrustManager that accepts all, curl -k, CURLOPT_SSL_VERIFYPEER 0), MD5, SHA-1, or unsalted SHA-256 used to store passwords, DES, RC4, or ECB mode, a constant or reused IV or nonce, and math/rand, random, Math.random, or rand used for a token, password, key, or session id. Do not flag MD5 or SHA-1 for a checksum, cache key, ETag, or dedup id, random values for jitter, sampling, or test data, or a TLS skip that only a test or a local-dev flag turns on. Evidence: quote the line and name what the value protects.",
+      "scope": ["**/*.{go,py,js,jsx,mjs,cjs,ts,tsx,java,kt,rb,php,c,h,cc,cpp,cxx,hpp,rs,cs,sh,bash}"],
+      "severity": "medium"
+    },
+    {
+      "id": "data-exposure",
+      "rule": "Flag changed code that exposes sensitive data or turns on an unsafe default. Check for a log, print, metric label, or trace attribute that writes a password, token, API key, auth header, cookie, card number, or a whole request or user object that holds them, an error response that sends a stack trace or internal error text to the client, debug mode or a debug or profiler endpoint turned on for production, CORS that allows any origin together with credentials, a session or auth cookie without Secure and HttpOnly, and an admin or debug listener on 0.0.0.0. Do not flag a log of ids, counts, or masked values, or a debug flag in a test or local-dev file. Evidence: quote the line and name the sensitive field or the setting.",
+      "scope": ["**/*.{go,py,js,jsx,mjs,cjs,ts,tsx,java,kt,rb,php,rs,cs}"],
+      "severity": "medium"
+    },
+    {
+      "id": "workflow-injection",
+      "rule": "Flag a GitHub Actions change that lets an outside contributor run code or read secrets. Check for a ${{ }} expression with data that a PR or issue author controls (github.event.issue.title or body, pull_request.title, body, head.ref, or head.label, comment.body, review.body, commit messages, github.head_ref) placed directly in a run script or in github-script code, a pull_request_target or workflow_run job that checks out the PR head and then builds, installs, or runs it, secrets given to a step that runs PR code, and write permissions on a job that runs PR code. Do not flag the same data passed through env and used as \"$VAR\" in the script, github.sha, github.ref, run ids, or repository names in run, or a pull_request_target job that only labels or comments and never checks out PR code. Evidence: quote the workflow line and name the trigger.",
+      "scope": [".github/workflows/**", ".github/actions/**", "**/action.yml", "**/action.yaml"],
+      "severity": "high"
+    },
+    {
+      "id": "container-config",
+      "rule": "Flag a container or infrastructure change that widens access or runs as root with no need. Check for privileged true, hostNetwork, hostPID, a hostPath mount of / or the Docker socket, added capabilities such as SYS_ADMIN or ALL, allowPrivilegeEscalation true, a Dockerfile whose final stage has no USER, a curl or wget piped into sh, a secret put into ENV, ARG, or a copied key file, a firewall or security group rule open to 0.0.0.0/0 or ::/0 on a port other than 80 or 443, a storage bucket with public read or write, and encryption at rest turned off. Do not flag a build stage that runs as root before a final USER, 0.0.0.0/0 on a public load balancer for 80 or 443, or a local dev compose file that binds to localhost. Evidence: quote the line and name the resource.",
+      "scope": ["**/Dockerfile", "**/Dockerfile.*", "**/*.dockerfile", "**/{docker-compose,compose}*.{yml,yaml}", "**/{k8s,kubernetes,manifests,deploy,helm,charts}/**/*.{yml,yaml}", "**/*.tf", "**/*.tfvars"],
+      "severity": "medium"
+    },
+    {
+      "id": "dependency-source",
+      "rule": "Flag a dependency change that takes code from an unsafe source. Check for a package URL over plain http, a git dependency on a branch or tag with no commit sha, a new registry or index URL (.npmrc, extra-index-url, GOPROXY, GONOSUMDB, GOINSECURE), a replace that points a module to an unknown fork, a package name one or two letters off a well-known package, a lockfile entry whose resolved URL or integrity hash changes while its version does not, and a new install or postinstall script that downloads and runs code. Do not flag a normal version bump from the default registry, a git dependency pinned to a full commit sha, or a local path replace in a monorepo. Evidence: quote the manifest or lockfile line.",
+      "scope": ["**/package.json", "**/package-lock.json", "**/yarn.lock", "**/pnpm-lock.yaml", "**/.npmrc", "**/go.mod", "**/requirements*.txt", "**/pyproject.toml", "**/poetry.lock", "**/uv.lock", "**/Pipfile", "**/Pipfile.lock", "**/pip.conf", "**/Cargo.toml", "**/Cargo.lock", "**/Gemfile", "**/Gemfile.lock", "**/composer.json", "**/composer.lock", "**/pom.xml", "**/build.gradle", "**/build.gradle.kts", "**/settings.gradle", "**/settings.gradle.kts"],
+      "severity": "medium"
+    }
+  ]
+}

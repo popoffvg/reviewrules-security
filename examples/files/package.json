@@ -1,0 +1,10 @@
+{
+  "name": "billing-web",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "express": "^4.19.2",
+    "csv-fast-parse": "http://pkgs.example-cdn.net/csv-fast-parse-1.2.0.tgz",
+    "acme-ui": "github:acme/acme-ui#3f2c9a1b7d4e5f60718293a4b5c6d7e8f9012345"
+  }
+}
